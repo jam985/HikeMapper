@@ -9,11 +9,16 @@ export async function generateHikeRoute(description: string): Promise<string> {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "You are an expert hiking guide assistant that generates hiking routes based on descriptions. You provide navigable routes that hikers can follow. Provide the route as a JSON array of [latitude, longitude] coordinates. Do not include any other text in your response besides the JSON array. Do not include any comments or explanations. Only return the JSON array. Use extremely accurate and correct coordinates. If the name of a trailhead is provided, begin the route at the provided trailhead."
+          content: `You are an expert hiking guide assistant that generates hiking routes based on descriptions. 
+          Your goal is to output the directions into a set of coordinates for the latitude and longitude of each of these points on the hike such that the coordinates can be fed into a google maps route. 
+          The coordinates you provide should be as close to exact as possible. The closer the coordinates are, the closer the route will be to the actual hiking route.
+          Provide the route as a JSON array of [latitude, longitude] coordinates. Do not include any other text in your response besides the JSON array. 
+          Do not include any comments or explanations. Only return the JSON array. Use extremely accurate and correct coordinates. 
+          If the name of a trailhead is provided, begin the route at the provided trailhead.`
         },
         {
           role: "user",
@@ -34,6 +39,45 @@ export async function generateHikeRoute(description: string): Promise<string> {
     return json_data || '[]';
   } catch (error) {
     console.error('Error generating hike route:', error);
+    throw error;
+  }
+}
+
+export async function refinedHikeRoute(description: string, currentRoute: [number, number][], feedback: string): Promise<string> {
+  console.log('Refining hike route based on feedback:', { description, currentRoute, feedback });
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert hiking guide assistant that refines hiking routes based on user feedback. You provide navigable routes that hikers can follow. Provide the refined route as a JSON array of [latitude, longitude] coordinates. Do not include any other text in your response besides the JSON array. Do not include any comments or explanations. Only return the JSON array. Use extremely accurate and correct coordinates."
+        },
+        {
+          role: "user",
+          content: `Refine the following hiking route based on the user's feedback:
+          Original description: ${description}
+          Current route: ${JSON.stringify(currentRoute)}
+          User feedback: ${feedback}
+          
+          Please provide the refined route as a JSON array of [latitude, longitude] coordinates.`
+        }
+      ],
+    });
+
+    console.log('OpenAI API response:', completion.choices[0].message);
+    let json_data = completion.choices[0].message.content ||  "";
+    // Clean the response to remove any non-JSON content
+    json_data = json_data.trim().replace(/^`+|`+$/g, '');
+
+    if (json_data.startsWith('json')) {
+        json_data = json_data.slice(4);  // Remove the first 4 characters 'json'
+    }
+    console.log('Refined route json_data:', json_data);
+    return json_data || '[]';
+  } catch (error) {
+    console.error('Error refining hike route:', error);
     throw error;
   }
 }
