@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Map from '../components/Map'
 import FeedbackChat from '../components/FeedbackChat'
 import RouteInstructions from '../components/RouteInstructions'
+import RouteDescription from '../components/RouteDescription'
 
 interface RouteInstructions {
   steps: string[];
@@ -11,13 +12,20 @@ interface RouteInstructions {
 }
 
 export default function CreatePage() {
-  const [description, setDescription] = useState('')
   const [route, setRoute] = useState<[number, number][]>([])
   const [instructions, setInstructions] = useState<RouteInstructions | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isFeedbackLoading, setIsFeedbackLoading] = useState(false)
 
-  const handleGenerateRoute = async () => {
+  useEffect(() => {
+    console.log('CreatePage component mounted')
+    return () => {
+      console.log('CreatePage component unmounted')
+    }
+  }, [])
+
+  const handleGenerateRoute = async (description: string) => {
+    console.log('Generating route with description:', description)
     setIsLoading(true)
     try {
       const response = await fetch('/api/generate-route', {
@@ -29,6 +37,7 @@ export default function CreatePage() {
       if (data.error) {
         throw new Error(data.error)
       }
+      console.log('Route generated successfully:', data)
       setRoute(data.coordinates)
       setInstructions(data.instructions)
     } catch (error) {
@@ -40,17 +49,19 @@ export default function CreatePage() {
   }
 
   const handleSendFeedback = async (feedback: string) => {
+    console.log('Sending feedback:', feedback, route)
     setIsFeedbackLoading(true)
     try {
       const response = await fetch('/api/refine-route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description, route, feedback }),
+        body: JSON.stringify({ description: instructions, route, feedback }),
       })
       const data = await response.json()
       if (data.error) {
         throw new Error(data.error)
       }
+      console.log('Route refined successfully:', data)
       setRoute(data.route)
     } catch (error) {
       console.error('Failed to refine route:', error)
@@ -61,39 +72,20 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="flex flex-col space-y-6">
-      <div className="w-full space-y-6">
-        <div>
-          <label htmlFor="route-description" className="block text-sm font-medium text-foreground mb-2">
-            Describe your hiking route
-          </label>
-          <textarea
-            id="route-description"
-            rows={4}
-            className="w-full p-2 border border-gray-300 rounded-md text-foreground bg-background"
-            placeholder="Enter a natural language description of your desired hiking route..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        <button
-          className="bg-accent text-white px-6 py-3 rounded-md hover:bg-accent/80 disabled:opacity-50 font-semibold shadow-md transition duration-300 ease-in-out transform hover:scale-105"
-          onClick={handleGenerateRoute}
-          disabled={isLoading || !description.trim()}
-        >
-          {isLoading ? 'Generating...' : 'Generate Route'}
-        </button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <RouteDescription onGenerateRoute={handleGenerateRoute} isLoading={isLoading} />
+        <FeedbackChat onSendFeedback={handleSendFeedback} isLoading={isFeedbackLoading} />
       </div>
-      <div className="flex space-x-6">
-        <div className="w-1/2">
-          <div className="h-[400px]">
-            <Map route={route} />
+      <div className="space-y-8">
+        <div className="h-[500px] bg-gray-100 rounded-lg overflow-hidden shadow-md">
+          <Map route={route} />
+        </div>
+        {instructions && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <RouteInstructions instructions={instructions} />
           </div>
-          {instructions && <RouteInstructions instructions={instructions} />}
-        </div>
-        <div className="w-1/2">
-          <FeedbackChat onSendFeedback={handleSendFeedback} isLoading={isFeedbackLoading} />
-        </div>
+        )}
       </div>
     </div>
   )
