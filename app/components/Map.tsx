@@ -41,6 +41,10 @@ export default function Map({ route }: MapProps) {
 
       routeLayerRef.current = L.polyline(route, { color: 'red' }).addTo(mapRef.current)
       mapRef.current.fitBounds(routeLayerRef.current.getBounds())
+
+      // Add markers for start and end points
+      L.marker(route[0]).addTo(mapRef.current).bindPopup('Start')
+      L.marker(route[route.length - 1]).addTo(mapRef.current).bindPopup('End')
     }
   }, [route])
 

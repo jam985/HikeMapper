@@ -12,9 +12,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const route = await generateHikeRoute(description);
-    console.log('Generated route:', route);
-    return NextResponse.json({ route });
+    const { instructions, coordinates } = await generateHikeRoute(description);
+    console.log('Generated route:', { instructions, coordinates });
+    return NextResponse.json({ instructions, coordinates });
   } catch (error) {
     console.error('Error generating route:', error);
     return NextResponse.json({ error: 'Failed to generate route' }, { status: 500 });

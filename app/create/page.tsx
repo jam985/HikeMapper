@@ -3,74 +3,66 @@
 import { useState } from 'react'
 import Map from '../components/Map'
 import FeedbackChat from '../components/FeedbackChat'
+import RouteInstructions from '../components/RouteInstructions'
+
+interface RouteInstructions {
+  steps: string[];
+  landmarks: string[];
+}
 
 export default function CreatePage() {
   const [description, setDescription] = useState('')
   const [route, setRoute] = useState<[number, number][]>([])
+  const [instructions, setInstructions] = useState<RouteInstructions | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isFeedbackLoading, setIsFeedbackLoading] = useState(false)
 
-  console.log('Rendering CreatePage')
-
   const handleGenerateRoute = async () => {
-    console.log('Generating route for description:', description)
     setIsLoading(true)
-
     try {
       const response = await fetch('/api/generate-route', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description }),
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate route')
-      }
-
       const data = await response.json()
-      console.log('Received route data:', data)
-      setRoute(JSON.parse(data.route))
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      setRoute(data.coordinates)
+      setInstructions(data.instructions)
     } catch (error) {
-      console.error('Error generating route:', error)
-      // TODO: Handle error (e.g., show error message to user)
+      console.error('Failed to generate route:', error)
+      // TODO: Add error handling UI
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleSendFeedback = async (feedback: string) => {
-    console.log('Sending feedback:', feedback)
     setIsFeedbackLoading(true)
-
     try {
       const response = await fetch('/api/refine-route', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description, route, feedback }),
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to refine route')
-      }
-
       const data = await response.json()
-      console.log('Received refined route data:', data)
-      setRoute(JSON.parse(data.route))
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      setRoute(data.route)
     } catch (error) {
-      console.error('Error refining route:', error)
-      // TODO: Handle error (e.g., show error message to user)
+      console.error('Failed to refine route:', error)
+      // TODO: Add error handling UI
     } finally {
       setIsFeedbackLoading(false)
     }
   }
 
   return (
-    <div className="flex space-x-6">
-      <div className="w-1/2 space-y-6">
+    <div className="flex flex-col space-y-6">
+      <div className="w-full space-y-6">
         <div>
           <label htmlFor="route-description" className="block text-sm font-medium text-foreground mb-2">
             Describe your hiking route
@@ -91,12 +83,17 @@ export default function CreatePage() {
         >
           {isLoading ? 'Generating...' : 'Generate Route'}
         </button>
-        <div className="h-[400px]">
-          <Map route={route} />
-        </div>
       </div>
-      <div className="w-1/2">
-        <FeedbackChat onSendFeedback={handleSendFeedback} isLoading={isFeedbackLoading} />
+      <div className="flex space-x-6">
+        <div className="w-1/2">
+          <div className="h-[400px]">
+            <Map route={route} />
+          </div>
+          {instructions && <RouteInstructions instructions={instructions} />}
+        </div>
+        <div className="w-1/2">
+          <FeedbackChat onSendFeedback={handleSendFeedback} isLoading={isFeedbackLoading} />
+        </div>
       </div>
     </div>
   )
